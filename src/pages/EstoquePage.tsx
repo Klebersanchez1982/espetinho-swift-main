@@ -20,7 +20,10 @@ const EstoquePage = () => {
   const [newCategory, setNewCategory] = useState(CATEGORIES[0]);
   const [newStock, setNewStock] = useState('');
 
-  const cardapioUrl = `${window.location.origin}/cardapio`;
+  const baseUrl = import.meta.env.BASE_URL;
+  const cardapioUrl = baseUrl === '/'
+    ? `${window.location.origin}/cardapio`
+    : `${window.location.origin}${baseUrl}#/cardapio`;
 
   const handleAdjust = (productId: string, delta: number) => {
     updateProductStock(productId, delta);
