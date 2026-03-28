@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useRestaurantStore } from "@/store/restaurant-store";
 import { subscribeAuthState } from "@/lib/auth";
+import { firebaseConfigError } from "@/lib/firebase";
 import RoleSelect from "@/components/RoleSelect";
 import AppHeader from "@/components/AppHeader";
 import AuthPage from "@/components/AuthPage";
@@ -20,6 +21,21 @@ import { Receipt, Package, ShieldCheck } from "lucide-react";
 
 const queryClient = new QueryClient();
 const AppRouter = import.meta.env.BASE_URL === "/" ? BrowserRouter : HashRouter;
+
+const FirebaseConfigErrorPage = () => (
+  <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="max-w-xl rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-destructive">
+      <h1 className="font-display text-xl font-bold">Configuracao Firebase ausente</h1>
+      <p className="mt-2 text-sm">
+        O app foi publicado sem variaveis de ambiente do Firebase no build do GitHub Actions.
+      </p>
+      <p className="mt-2 text-sm font-medium">{firebaseConfigError}</p>
+      <p className="mt-3 text-sm">
+        Configure os Secrets VITE_FIREBASE_* no repositorio e execute novo deploy.
+      </p>
+    </div>
+  </div>
+);
 
 const CaixaArea = () => {
   const [tab, setTab] = useState<'caixa' | 'estoque' | 'usuarios'>('caixa');
@@ -79,6 +95,10 @@ const MainApp = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      {firebaseConfigError ? (
+        <FirebaseConfigErrorPage />
+      ) : (
+        <>
       <AppBootstrap />
       <Toaster />
       <Sonner />
@@ -88,6 +108,8 @@ const App = () => (
           <Route path="*" element={<MainApp />} />
         </Routes>
       </AppRouter>
+        </>
+      )}
     </TooltipProvider>
   </QueryClientProvider>
 );
