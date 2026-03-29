@@ -2,6 +2,7 @@
 // Adicione aqui os e-mails que podem ser administrador
 export const AUTHORIZED_ADMIN_EMAILS = [
   'klebersanchez1982@gmail.com',
+  'klebervsanchez@gmail.com',
   'master@nabrasa.local',
   // Adicione mais e-mails de admins aqui
 ];
