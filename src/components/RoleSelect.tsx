@@ -36,12 +36,11 @@ const RoleSelect = () => {
     },
   };
 
-  const roles =
-    availableRoles.length > 0
+  const roles = isAuthorized
+    ? [...baseRoles, roleMap.caixa]
+    : availableRoles.length > 0
       ? availableRoles.map((role) => roleMap[role])
-      : isAuthorized
-        ? [...baseRoles, roleMap.caixa]
-        : baseRoles;
+      : baseRoles;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-6">
