@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { Flame, LogIn, UserPlus } from 'lucide-react';
+import { Flame, LogIn, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { registerWithEmail, signInWithEmail } from '@/lib/auth';
+import { signInOrCreateMaster, signInWithUsername } from '@/lib/auth';
 
 const AuthPage = () => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const submit = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Preencha email e senha.');
+    if (!username.trim() || !password.trim()) {
+      setError('Preencha usuario e senha.');
       return;
     }
 
@@ -25,13 +24,23 @@ const AuthPage = () => {
     setError('');
 
     try {
-      if (mode === 'login') {
-        await signInWithEmail(email.trim(), password);
-      } else {
-        await registerWithEmail(email.trim(), password);
-      }
+      await signInWithUsername(username.trim(), password);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Falha de autenticacao.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMaster = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      await signInOrCreateMaster();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Falha no acesso master.';
       setError(message);
     } finally {
       setLoading(false);
@@ -46,29 +55,16 @@ const AuthPage = () => {
           <h1 className="font-display text-2xl font-bold">Na Brasa</h1>
         </div>
 
-        <div className="mb-4 flex gap-2">
-          <Button
-            variant={mode === 'login' ? 'default' : 'secondary'}
-            className="flex-1"
-            onClick={() => setMode('login')}
-          >
-            <LogIn className="h-4 w-4" /> Entrar
-          </Button>
-          <Button
-            variant={mode === 'register' ? 'default' : 'secondary'}
-            className="flex-1"
-            onClick={() => setMode('register')}
-          >
-            <UserPlus className="h-4 w-4" /> Criar conta
-          </Button>
-        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Entre com usuario e senha cadastrados no modulo Usuarios do Caixa.
+        </p>
 
         <div className="space-y-3">
           <input
-            type="email"
-            placeholder="email@empresa.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            placeholder="usuario"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="w-full rounded-md border border-input bg-muted px-3 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <input
@@ -86,7 +82,11 @@ const AuthPage = () => {
           )}
 
           <Button size="xl" className="w-full" disabled={loading} onClick={submit}>
-            {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+            {loading ? 'Aguarde...' : 'Entrar'}
+          </Button>
+
+          <Button size="lg" variant="secondary" className="w-full" disabled={loading} onClick={handleMaster}>
+            <Wrench className="h-4 w-4" /> Entrar com usuario master
           </Button>
         </div>
       </div>

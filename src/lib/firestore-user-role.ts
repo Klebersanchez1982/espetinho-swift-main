@@ -1,6 +1,7 @@
 import { collection, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserRole } from '@/types/restaurant';
+import { createAuthUserWithUsername, normalizeUsername } from '@/lib/auth';
 
 const usersCollection = 'users';
 const usersRef = collection(db, usersCollection);
@@ -8,6 +9,7 @@ const usersRef = collection(db, usersCollection);
 export interface UserProfile {
   id: string;
   email: string | null;
+  username: string | null;
   role: UserRole | null;
   roles: UserRole[];
 }
@@ -47,12 +49,16 @@ export const subscribeUserRole = (
 export const ensureUserEmailInFirestore = async (uid: string, email: string | null | undefined) => {
   if (!email || !email.trim()) return;
 
+  const normalizedEmail = email.trim().toLowerCase();
+  const usernameFromEmail = normalizeUsername(normalizedEmail.split('@')[0] ?? '');
+
   const userRef = doc(db, usersCollection, uid);
 
   await setDoc(
     userRef,
     {
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
+      username: usernameFromEmail || null,
       updatedAt: new Date(),
     },
     { merge: true }
@@ -63,14 +69,15 @@ export const setUserRoleInFirestore = async (
   uid: string,
   role: UserRole | null,
   email?: string | null,
-  roles?: UserRole[]
+  roles?: UserRole[],
+  username?: string | null
 ) => {
   const userRef = doc(db, usersCollection, uid);
 
   const normalizedRoles = (roles && roles.length > 0 ? roles : role ? [role] : [])
     .filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa');
 
-  const payload: { role: UserRole | null; roles: UserRole[]; updatedAt: Date; email?: string } = {
+  const payload: { role: UserRole | null; roles: UserRole[]; updatedAt: Date; email?: string; username?: string } = {
     role,
     roles: normalizedRoles,
     updatedAt: new Date(),
@@ -78,6 +85,10 @@ export const setUserRoleInFirestore = async (
 
   if (email && email.trim()) {
     payload.email = email.trim().toLowerCase();
+  }
+
+  if (username && username.trim()) {
+    payload.username = normalizeUsername(username);
   }
 
   await setDoc(
@@ -99,6 +110,7 @@ export const subscribeUsersForAdmin = (
           role?: UserRole | null;
           roles?: UserRole[] | null;
           email?: string | null;
+          username?: string | null;
         };
 
         const roles = Array.isArray(data.roles)
@@ -110,6 +122,7 @@ export const subscribeUsersForAdmin = (
         return {
           id: snapshotDoc.id,
           email: data.email ?? null,
+          username: data.username ?? null,
           role: data.role ?? null,
           roles,
         } satisfies UserProfile;
@@ -141,4 +154,32 @@ export const updateUserRoleAsAdmin = async (uid: string, roles: UserRole[], curr
     },
     { merge: true }
   );
+};
+
+export const createManagedUserAsAdmin = async (
+  username: string,
+  password: string,
+  roles: UserRole[]
+) => {
+  const normalizedRoles = roles.filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa');
+  if (normalizedRoles.length === 0) {
+    throw new Error('Selecione ao menos um modulo para o novo usuario.');
+  }
+
+  const created = await createAuthUserWithUsername(username, password);
+  const userRef = doc(db, usersCollection, created.uid);
+
+  await setDoc(
+    userRef,
+    {
+      email: created.email,
+      username: created.username,
+      role: normalizedRoles[0],
+      roles: normalizedRoles,
+      updatedAt: new Date(),
+    },
+    { merge: true }
+  );
+
+  return created;
 };

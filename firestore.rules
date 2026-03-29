@@ -8,6 +8,7 @@ service cloud.firestore {
     function isAuthorizedAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'klebersanchez1982@gmail.com'
+        || request.auth.token.email == 'master@nabrasa.local'
       );
     }
 
@@ -93,100 +94,98 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || hasRole('caixa'));
 
-      allow create: if isSignedIn()
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email'])
-        && request.resource.data.email is string
-        && request.resource.data.email == request.auth.token.email
-        && (
-          // sincronizacao inicial de email sem perfil definido
-          (!('role' in request.resource.data) && !('roles' in request.resource.data))
-          || (
-            request.resource.data.role in ['garcom', 'assador', 'caixa']
-            && request.resource.data.roles is list
-            && request.resource.data.roles.size() > 0
-            && request.resource.data.roles.size() <= 3
-            && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
-            && request.resource.data.roles.hasAny([request.resource.data.role])
-            && (
-              request.resource.data.role in ['garcom', 'assador']
-              || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
-            )
-          )
-        )
-        && request.resource.data.updatedAt is timestamp;
+      function validRoleAndRoles() {
+        return request.resource.data.role in ['garcom', 'assador', 'caixa']
+          && request.resource.data.roles is list
+          && request.resource.data.roles.size() > 0
+          && request.resource.data.roles.size() <= 3
+          && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
+          && request.resource.data.roles.hasAny([request.resource.data.role]);
+      }
 
-      // User can define role if it is null (first assignment),
-      // then cannot change it anymore. Caixa can manage any role.
-      // Only authorized admins can self-assign 'caixa' role.
-      allow update: if (
+      function validUsernameField() {
+        return !('username' in request.resource.data)
+          || (
+            request.resource.data.username is string
+            && request.resource.data.username.matches('^[a-z0-9._-]{3,40}$')
+          );
+      }
+
+      function validEmailForSelf() {
+        return !('email' in request.resource.data)
+          || (
+            request.resource.data.email is string
+            && request.resource.data.email == request.auth.token.email
+          );
+      }
+
+      function validEmailForAdminWrite() {
+        return !('email' in request.resource.data)
+          || (
+            request.resource.data.email is string
+            && (!('email' in resource.data) || request.resource.data.email == resource.data.email)
+          );
+      }
+
+      allow create: if (
           isSignedIn()
           && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email'])
-          && (!('email' in request.resource.data)
-            || (
-              request.resource.data.email is string
-              && request.resource.data.email == request.auth.token.email
-            ))
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && validEmailForSelf()
+          && validUsernameField()
           && (
-            // self apenas troca modulo atual dentre modulos ja liberados
-            (
-              request.resource.data.role in ['garcom', 'assador', 'caixa']
-              && request.resource.data.roles is list
-              && request.resource.data.roles.size() > 0
-              && request.resource.data.roles.size() <= 3
-              && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
-              && request.resource.data.roles.hasAny([request.resource.data.role])
-              && (
-                (
-                  !('roles' in resource.data)
-                  && resource.data.role in ['garcom', 'assador', 'caixa']
-                  && request.resource.data.roles.hasAny([resource.data.role])
-                )
-                || request.resource.data.roles == resource.data.roles
-                || isAuthorizedAdmin()
-              )
-            )
-            // ou somente sincroniza email mantendo role/roles atuais
+            // sincronizacao inicial sem perfil definido
+            (!('role' in request.resource.data) && !('roles' in request.resource.data))
             || (
-              (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
-              && (
-                !('roles' in resource.data)
-                || (!('roles' in request.resource.data) || request.resource.data.roles == resource.data.roles)
-              )
-            )
-          )
-          && (
-            (
-              resource.data.role == null
+              validRoleAndRoles()
               && (
                 request.resource.data.role in ['garcom', 'assador']
                 || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
               )
-            )
-            ||
-            (
-              request.resource.data.role == resource.data.role
-              || request.resource.data.roles.hasAny([request.resource.data.role])
-              || (isAuthorizedAdmin() && request.resource.data.role in ['garcom', 'assador', 'caixa'])
             )
           )
           && request.resource.data.updatedAt is timestamp
         )
         || (
           hasRole('caixa')
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email'])
-          && request.resource.data.role in ['garcom', 'assador', 'caixa']
-          && request.resource.data.roles is list
-          && request.resource.data.roles.size() > 0
-          && request.resource.data.roles.size() <= 3
-          && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
-          && request.resource.data.roles.hasAny([request.resource.data.role])
-          && (!('email' in request.resource.data)
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && validRoleAndRoles()
+          && validUsernameField()
+          && request.resource.data.updatedAt is timestamp
+        );
+
+      allow update: if (
+          isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && validEmailForSelf()
+          && validUsernameField()
+          && (
+            // self troca somente perfil atual dentro dos modulos liberados
+            (
+              validRoleAndRoles()
+              && (
+                (('roles' in resource.data) && request.resource.data.roles == resource.data.roles)
+                || (!('roles' in resource.data) && request.resource.data.role in ['garcom', 'assador'])
+                || isAuthorizedAdmin()
+              )
+            )
+            // ou apenas sincroniza campos de identidade
             || (
-              request.resource.data.email is string
-              && (!('email' in resource.data) || request.resource.data.email == resource.data.email)
-            ))
+              (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
+              && (!('roles' in request.resource.data)
+                || !('roles' in resource.data)
+                || request.resource.data.roles == resource.data.roles)
+            )
+          )
+          && request.resource.data.updatedAt is timestamp
+        )
+        || (
+          hasRole('caixa')
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && validRoleAndRoles()
+          && validUsernameField()
+          && validEmailForAdminWrite()
           && request.resource.data.updatedAt is timestamp
         );
 
