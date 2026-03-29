@@ -7,6 +7,7 @@ const usersRef = collection(db, usersCollection);
 
 export interface UserProfile {
   id: string;
+  email: string | null;
   role: UserRole | null;
 }
 
@@ -36,15 +37,25 @@ export const subscribeUserRole = (
   );
 };
 
-export const setUserRoleInFirestore = async (uid: string, role: UserRole | null) => {
+export const setUserRoleInFirestore = async (
+  uid: string,
+  role: UserRole | null,
+  email?: string | null
+) => {
   const userRef = doc(db, usersCollection, uid);
+
+  const payload: { role: UserRole | null; updatedAt: Date; email?: string } = {
+    role,
+    updatedAt: new Date(),
+  };
+
+  if (email && email.trim()) {
+    payload.email = email.trim().toLowerCase();
+  }
 
   await setDoc(
     userRef,
-    {
-      role,
-      updatedAt: new Date(),
-    },
+    payload,
     { merge: true }
   );
 };
@@ -57,9 +68,10 @@ export const subscribeUsersForAdmin = (
     usersRef,
     (snapshot) => {
       const users = snapshot.docs.map((snapshotDoc) => {
-        const data = snapshotDoc.data() as { role?: UserRole | null };
+        const data = snapshotDoc.data() as { role?: UserRole | null; email?: string | null };
         return {
           id: snapshotDoc.id,
+          email: data.email ?? null,
           role: data.role ?? null,
         } satisfies UserProfile;
       });

@@ -83,8 +83,9 @@ export const useRestaurantStore = create<RestaurantState>()(
       role: null,
       setRole: (role) => {
         const uid = get().authUserId;
+        const email = get().authEmail;
         if (uid) {
-          fireAndForget(setUserRoleInFirestore(uid, role));
+          fireAndForget(setUserRoleInFirestore(uid, role, email));
           return;
         }
 

@@ -95,7 +95,9 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['role', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['role', 'updatedAt', 'email'])
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
         && (
           request.resource.data.role in ['garcom', 'assador']
           || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
@@ -108,7 +110,12 @@ service cloud.firestore {
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['role', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['role', 'updatedAt', 'email'])
+          && (!('email' in request.resource.data)
+            || (
+              request.resource.data.email is string
+              && request.resource.data.email == request.auth.token.email
+            ))
           && (
             (
               resource.data.role == null
@@ -127,8 +134,13 @@ service cloud.firestore {
         )
         || (
           hasRole('caixa')
-          && request.resource.data.keys().hasOnly(['role', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['role', 'updatedAt', 'email'])
           && request.resource.data.role in ['garcom', 'assador', 'caixa']
+          && (!('email' in request.resource.data)
+            || (
+              request.resource.data.email is string
+              && (!('email' in resource.data) || request.resource.data.email == resource.data.email)
+            ))
           && request.resource.data.updatedAt is timestamp
         );
 

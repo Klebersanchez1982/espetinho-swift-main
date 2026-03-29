@@ -76,7 +76,10 @@ const AdminUsersPage = () => {
             <div key={user.id} className="rounded-lg border border-border bg-card p-4">
               <div className="mb-3 flex items-center gap-2">
                 <UserCog className="h-4 w-4 text-primary" />
-                <p className="text-sm font-medium break-all">{user.id}</p>
+                <div>
+                  <p className="text-sm font-medium break-all">{user.email ?? 'Email nao informado'}</p>
+                  <p className="text-xs text-muted-foreground break-all">UID: {user.id}</p>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
