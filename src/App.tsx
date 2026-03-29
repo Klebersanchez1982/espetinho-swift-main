@@ -4,6 +4,7 @@ import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { VersionBadge } from "@/components/VersionBadge";
 import { useRestaurantStore } from "@/store/restaurant-store";
 import { subscribeAuthState } from "@/lib/auth";
 import { firebaseConfigError } from "@/lib/firebase";
@@ -100,6 +101,7 @@ const App = () => (
       ) : (
         <>
       <AppBootstrap />
+      <VersionBadge />
       <Toaster />
       <Sonner />
       <AppRouter>

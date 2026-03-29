@@ -1,0 +1,39 @@
+name: Auto Increment Version
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "src/**"
+      - "firestore.rules"
+      - "package.json"
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Increment patch version
+        run: node scripts/increment-version.js patch
+
+      - name: Commit version bump
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add VERSION.json
+          git commit -m "chore: auto-increment patch version" || echo "No changes to commit"
+
+      - name: Push version bump
+        run: git push origin main || echo "Already up to date"
