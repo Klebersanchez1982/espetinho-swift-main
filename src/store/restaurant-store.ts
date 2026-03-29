@@ -66,7 +66,7 @@ export const useRestaurantStore = create<RestaurantState>()(
     (set, get) => ({
       authUserId: null,
       authEmail: null,
-      setAuthUserId: (uid, email = null) => set({ authUserId: uid, authEmail: email ?? null }),
+      setAuthUserId: (uid, email = null) => set({ authUserId: uid, authEmail: email ?? null, role: null }),
       clearSession: () => {
         set({
           authUserId: null,
