@@ -142,7 +142,7 @@ const AppBootstrap = () => {
       }
 
       setAuthUserId(user.uid, user.email);
-      cleanupRole = initRoleSync(user.uid, user.email);
+      cleanupRole = initRoleSync(user.uid);
       cleanupProducts = initProductsSync();
       cleanupOrders = initOrdersSync();
     });

@@ -16,10 +16,7 @@ service cloud.firestore {
     }
 
     function hasRole(role) {
-      return isSignedIn() && (
-        currentRole() == role
-        || (role == 'caixa' && isAuthorizedAdmin())
-      );
+      return isSignedIn() && currentRole() == role;
     }
 
     function isTeamMember() {
@@ -123,7 +120,7 @@ service cloud.firestore {
             ||
             (
               request.resource.data.role == resource.data.role
-              || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
+              || (isAuthorizedAdmin() && request.resource.data.role in ['garcom', 'assador', 'caixa'])
             )
           )
           && request.resource.data.updatedAt is timestamp
