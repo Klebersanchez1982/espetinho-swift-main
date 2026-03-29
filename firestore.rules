@@ -21,6 +21,10 @@ service cloud.firestore {
       return isSignedIn() && currentRole() == role;
     }
 
+    function canManageUsers() {
+      return hasRole('caixa') || isAuthorizedAdmin();
+    }
+
     function isTeamMember() {
       return hasRole('garcom') || hasRole('assador') || hasRole('caixa');
     }
@@ -89,7 +93,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || hasRole('caixa'));
+      allow read: if isSignedIn() && (request.auth.uid == userId || canManageUsers());
 
       function validRoleAndRoles() {
         return request.resource.data.role in ['garcom', 'assador', 'caixa']
@@ -212,7 +216,7 @@ service cloud.firestore {
           && (validSelfIdentityCreateOnly() || validAuthorizedAdminSelfBootstrap())
         )
         || (
-          hasRole('caixa')
+          canManageUsers()
           && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
           && validRoleAndRoles()
           && validUsernameField()
@@ -227,7 +231,7 @@ service cloud.firestore {
           && (validSelfIdentityUpdateOnly() || validAuthorizedAdminSelfBootstrap())
         )
         || (
-          hasRole('caixa')
+          canManageUsers()
           && (
             (
               request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
@@ -241,7 +245,7 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if hasRole('caixa') && !isProtectedMasterUser();
+      allow delete: if canManageUsers() && !isProtectedMasterUser();
     }
 
     // products
