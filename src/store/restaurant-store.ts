@@ -45,6 +45,9 @@ interface RestaurantState {
   setRole: (role: UserRole | null) => void;
   initRoleSync: (uid: string) => () => void;
 
+  caixaTab: 'caixa' | 'estoque' | 'usuarios';
+  setCaixaTab: (tab: 'caixa' | 'estoque' | 'usuarios') => void;
+
   initProductsSync: () => () => void;
   initOrdersSync: () => () => void;
 
@@ -83,6 +86,7 @@ export const useRestaurantStore = create<RestaurantState>()(
           authEmail: null,
           role: null,
           availableRoles: [],
+          caixaTab: 'caixa',
           orders: [],
           products: INITIAL_PRODUCTS,
         });
@@ -105,6 +109,9 @@ export const useRestaurantStore = create<RestaurantState>()(
           return;
         }
       },
+
+      caixaTab: 'caixa',
+      setCaixaTab: (tab) => set({ caixaTab: tab }),
 
       initRoleSync: (uid) => {
         if (roleUnsubscribe) {

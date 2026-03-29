@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -40,7 +40,8 @@ const FirebaseConfigErrorPage = () => (
 );
 
 const CaixaArea = () => {
-  const [tab, setTab] = useState<'caixa' | 'estoque' | 'usuarios'>('caixa');
+  const tab = useRestaurantStore((s) => s.caixaTab);
+  const setTab = useRestaurantStore((s) => s.setCaixaTab);
 
   return (
     <div>
