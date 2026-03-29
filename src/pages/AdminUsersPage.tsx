@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShieldCheck, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { subscribeUsersForAdmin, updateUserRoleAsAdmin, type UserProfile } from '@/lib/firestore-user-role';
@@ -32,8 +32,6 @@ const AdminUsersPage = () => {
 
     return unsubscribe;
   }, []);
-
-  const usersWithRole = useMemo(() => users.filter((user) => user.roles.length > 0 || !!user.role), [users]);
 
   const toggleRole = async (user: UserProfile, role: UserRole) => {
     const currentRoles = user.roles.length > 0 ? user.roles : user.role ? [user.role] : [];
@@ -77,19 +75,18 @@ const AdminUsersPage = () => {
 
       {loading ? (
         <div className="rounded-lg border border-border bg-card p-4 text-muted-foreground">Carregando usuarios...</div>
-      ) : usersWithRole.length === 0 ? (
+      ) : users.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-4 text-muted-foreground">
           Nenhum usuario com perfil definido ainda.
         </div>
       ) : (
         <div className="grid gap-3">
-          {usersWithRole.map((user) => (
+          {users.map((user) => (
             <div key={user.id} className="rounded-lg border border-border bg-card p-4">
               <div className="mb-3 flex items-center gap-2">
                 <UserCog className="h-4 w-4 text-primary" />
                 <div>
-                  <p className="text-sm font-medium break-all">{user.email ?? 'Email nao informado'}</p>
-                  <p className="text-xs text-muted-foreground break-all">UID: {user.id}</p>
+                  <p className="text-sm font-medium break-all">{user.email ?? 'Email nao informado (usuario precisa entrar ao menos uma vez)'}</p>
                 </div>
               </div>
 

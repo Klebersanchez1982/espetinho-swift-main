@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Flame, UtensilsCrossed, ChefHat, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRestaurantStore } from '@/store/restaurant-store';
@@ -15,13 +16,11 @@ const RoleSelect = () => {
   const availableRoles = useRestaurantStore((s) => s.availableRoles);
   const isAuthorized = isAuthorizedAdmin(authEmail);
 
-  // Admins autorizados vão direto para caixa
-  if (isAuthorized) {
-    const caixaRole: UserRole = 'caixa';
-    setRole(caixaRole);
-    // Não renderiza este componente
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthorized && availableRoles.length === 0) {
+      setRole('caixa');
+    }
+  }, [isAuthorized, availableRoles.length, setRole]);
 
   const roleMap: Record<UserRole, { role: UserRole; label: string; icon: React.ReactNode; desc: string }> = {
     garcom: {
@@ -44,7 +43,9 @@ const RoleSelect = () => {
     },
   };
 
-  const roles = availableRoles.length > 0
+  const roles = isAuthorized
+    ? [...baseRoles, roleMap.caixa]
+    : availableRoles.length > 0
     ? availableRoles.map((role) => roleMap[role])
     : baseRoles;
 

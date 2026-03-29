@@ -144,6 +144,7 @@ service cloud.firestore {
                   && request.resource.data.roles.hasAny([resource.data.role])
                 )
                 || request.resource.data.roles == resource.data.roles
+                || isAuthorizedAdmin()
               )
             )
             // ou somente sincroniza email mantendo role/roles atuais
