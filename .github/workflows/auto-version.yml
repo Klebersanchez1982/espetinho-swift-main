@@ -32,7 +32,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add VERSION.json
+          git add public/VERSION.json
           git commit -m "chore: auto-increment patch version" || echo "No changes to commit"
 
       - name: Push version bump

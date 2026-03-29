@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const versionFilePath = path.join(__dirname, '../VERSION.json');
+const versionFilePath = path.join(__dirname, '../public/VERSION.json');
 
 // Lê o arquivo VERSION.json
 const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'));
