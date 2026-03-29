@@ -12,18 +12,36 @@ const baseRoles: { role: Exclude<UserRole, 'caixa'>; label: string; icon: React.
 const RoleSelect = () => {
   const setRole = useRestaurantStore((s) => s.setRole);
   const authEmail = useRestaurantStore((s) => s.authEmail);
+  const availableRoles = useRestaurantStore((s) => s.availableRoles);
   const isAuthorized = isAuthorizedAdmin(authEmail);
-  const roles = isAuthorized
-    ? [
-        ...baseRoles,
-        {
-          role: 'caixa' as const,
-          label: 'Caixa',
-          icon: <Calculator className="h-8 w-8" />,
-          desc: 'Acesso administrativo completo',
-        },
-      ]
-    : baseRoles;
+
+  const roleMap: Record<UserRole, { role: UserRole; label: string; icon: React.ReactNode; desc: string }> = {
+    garcom: {
+      role: 'garcom',
+      label: 'Garçom',
+      icon: <UtensilsCrossed className="h-8 w-8" />,
+      desc: 'Criar comandas e gerenciar pedidos',
+    },
+    assador: {
+      role: 'assador',
+      label: 'Assador',
+      icon: <ChefHat className="h-8 w-8" />,
+      desc: 'Visualizar e preparar pedidos',
+    },
+    caixa: {
+      role: 'caixa',
+      label: 'Caixa',
+      icon: <Calculator className="h-8 w-8" />,
+      desc: 'Acesso administrativo completo',
+    },
+  };
+
+  const roles =
+    availableRoles.length > 0
+      ? availableRoles.map((role) => roleMap[role])
+      : isAuthorized
+        ? [...baseRoles, roleMap.caixa]
+        : baseRoles;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-6">

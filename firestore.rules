@@ -95,12 +95,24 @@ service cloud.firestore {
 
       allow create: if isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(['role', 'updatedAt', 'email'])
+        && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email'])
         && request.resource.data.email is string
         && request.resource.data.email == request.auth.token.email
         && (
-          request.resource.data.role in ['garcom', 'assador']
-          || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
+          // sincronizacao inicial de email sem perfil definido
+          (!('role' in request.resource.data) && !('roles' in request.resource.data))
+          || (
+            request.resource.data.role in ['garcom', 'assador', 'caixa']
+            && request.resource.data.roles is list
+            && request.resource.data.roles.size() > 0
+            && request.resource.data.roles.size() <= 3
+            && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
+            && request.resource.data.roles.hasAny([request.resource.data.role])
+            && (
+              request.resource.data.role in ['garcom', 'assador']
+              || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
+            )
+          )
         )
         && request.resource.data.updatedAt is timestamp;
 
@@ -110,12 +122,39 @@ service cloud.firestore {
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['role', 'updatedAt', 'email'])
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email'])
           && (!('email' in request.resource.data)
             || (
               request.resource.data.email is string
               && request.resource.data.email == request.auth.token.email
             ))
+          && (
+            // self apenas troca modulo atual dentre modulos ja liberados
+            (
+              request.resource.data.role in ['garcom', 'assador', 'caixa']
+              && request.resource.data.roles is list
+              && request.resource.data.roles.size() > 0
+              && request.resource.data.roles.size() <= 3
+              && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
+              && request.resource.data.roles.hasAny([request.resource.data.role])
+              && (
+                (
+                  !('roles' in resource.data)
+                  && resource.data.role in ['garcom', 'assador', 'caixa']
+                  && request.resource.data.roles.hasAny([resource.data.role])
+                )
+                || request.resource.data.roles == resource.data.roles
+              )
+            )
+            // ou somente sincroniza email mantendo role/roles atuais
+            || (
+              (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
+              && (
+                !('roles' in resource.data)
+                || (!('roles' in request.resource.data) || request.resource.data.roles == resource.data.roles)
+              )
+            )
+          )
           && (
             (
               resource.data.role == null
@@ -127,6 +166,7 @@ service cloud.firestore {
             ||
             (
               request.resource.data.role == resource.data.role
+              || request.resource.data.roles.hasAny([request.resource.data.role])
               || (isAuthorizedAdmin() && request.resource.data.role in ['garcom', 'assador', 'caixa'])
             )
           )
@@ -134,8 +174,13 @@ service cloud.firestore {
         )
         || (
           hasRole('caixa')
-          && request.resource.data.keys().hasOnly(['role', 'updatedAt', 'email'])
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email'])
           && request.resource.data.role in ['garcom', 'assador', 'caixa']
+          && request.resource.data.roles is list
+          && request.resource.data.roles.size() > 0
+          && request.resource.data.roles.size() <= 3
+          && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
+          && request.resource.data.roles.hasAny([request.resource.data.role])
           && (!('email' in request.resource.data)
             || (
               request.resource.data.email is string

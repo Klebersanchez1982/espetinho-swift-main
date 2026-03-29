@@ -41,6 +41,7 @@ interface RestaurantState {
   clearRole: () => void;
 
   role: UserRole | null;
+  availableRoles: UserRole[];
   setRole: (role: UserRole | null) => void;
   initRoleSync: (uid: string) => () => void;
 
@@ -71,6 +72,7 @@ export const useRestaurantStore = create<RestaurantState>()(
           authUserId: null,
           authEmail: null,
           role: null,
+          availableRoles: [],
           orders: [],
           products: INITIAL_PRODUCTS,
         });
@@ -81,11 +83,14 @@ export const useRestaurantStore = create<RestaurantState>()(
       },
 
       role: null,
+      availableRoles: [],
       setRole: (role) => {
         const uid = get().authUserId;
         const email = get().authEmail;
         if (uid) {
-          fireAndForget(setUserRoleInFirestore(uid, role, email));
+          const currentRoles = get().availableRoles;
+          const nextRoles = role && !currentRoles.includes(role) ? [...currentRoles, role] : currentRoles;
+          fireAndForget(setUserRoleInFirestore(uid, role, email, nextRoles));
           return;
         }
 
@@ -99,8 +104,8 @@ export const useRestaurantStore = create<RestaurantState>()(
 
         roleUnsubscribe = subscribeUserRole(
           uid,
-          (role) => {
-            set({ role });
+          (role, roles) => {
+            set({ role, availableRoles: roles });
           },
           (error) => {
             console.error('Erro ao ouvir role do usuario:', error);

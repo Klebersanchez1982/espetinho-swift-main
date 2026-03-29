@@ -33,15 +33,26 @@ const AdminUsersPage = () => {
     return unsubscribe;
   }, []);
 
-  const usersWithRole = useMemo(() => users.filter((user) => !!user.role), [users]);
+  const usersWithRole = useMemo(() => users.filter((user) => user.roles.length > 0 || !!user.role), [users]);
 
-  const changeRole = async (uid: string, role: UserRole) => {
-    setUpdatingUserId(uid);
+  const toggleRole = async (user: UserProfile, role: UserRole) => {
+    const currentRoles = user.roles.length > 0 ? user.roles : user.role ? [user.role] : [];
+    const hasRole = currentRoles.includes(role);
+    const nextRoles = hasRole
+      ? currentRoles.filter((r) => r !== role)
+      : [...currentRoles, role];
+
+    if (nextRoles.length === 0) {
+      setError('Selecione pelo menos um modulo para o usuario.');
+      return;
+    }
+
+    setUpdatingUserId(user.id);
     setError('');
     try {
-      await updateUserRoleAsAdmin(uid, role);
+      await updateUserRoleAsAdmin(user.id, nextRoles, user.role);
     } catch {
-      setError('Falha ao atualizar role do usuario.');
+      setError('Falha ao atualizar modulos do usuario.');
     } finally {
       setUpdatingUserId(null);
     }
@@ -87,9 +98,9 @@ const AdminUsersPage = () => {
                   <Button
                     key={role}
                     size="sm"
-                    variant={user.role === role ? 'default' : 'secondary'}
+                    variant={(user.roles.length > 0 ? user.roles : user.role ? [user.role] : []).includes(role) ? 'default' : 'secondary'}
                     disabled={updatingUserId === user.id}
-                    onClick={() => changeRole(user.id, role)}
+                    onClick={() => toggleRole(user, role)}
                   >
                     {labels[role]}
                   </Button>

@@ -9,11 +9,12 @@ export interface UserProfile {
   id: string;
   email: string | null;
   role: UserRole | null;
+  roles: UserRole[];
 }
 
 export const subscribeUserRole = (
   uid: string,
-  onRole: (role: UserRole | null) => void,
+  onRole: (role: UserRole | null, roles: UserRole[]) => void,
   onError?: (error: unknown) => void
 ): Unsubscribe => {
   const userRef = doc(db, usersCollection, uid);
@@ -22,12 +23,18 @@ export const subscribeUserRole = (
     userRef,
     (snapshot) => {
       if (!snapshot.exists()) {
-        onRole(null);
+        onRole(null, []);
         return;
       }
 
-      const data = snapshot.data() as { role?: UserRole | null };
-      onRole(data.role ?? null);
+      const data = snapshot.data() as { role?: UserRole | null; roles?: UserRole[] | null };
+      const roles = Array.isArray(data.roles)
+        ? data.roles.filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa')
+        : data.role
+          ? [data.role]
+          : [];
+
+      onRole(data.role ?? null, roles);
     },
     (error) => {
       if (onError) {
@@ -37,15 +44,35 @@ export const subscribeUserRole = (
   );
 };
 
+export const ensureUserEmailInFirestore = async (uid: string, email: string | null | undefined) => {
+  if (!email || !email.trim()) return;
+
+  const userRef = doc(db, usersCollection, uid);
+
+  await setDoc(
+    userRef,
+    {
+      email: email.trim().toLowerCase(),
+      updatedAt: new Date(),
+    },
+    { merge: true }
+  );
+};
+
 export const setUserRoleInFirestore = async (
   uid: string,
   role: UserRole | null,
-  email?: string | null
+  email?: string | null,
+  roles?: UserRole[]
 ) => {
   const userRef = doc(db, usersCollection, uid);
 
-  const payload: { role: UserRole | null; updatedAt: Date; email?: string } = {
+  const normalizedRoles = (roles && roles.length > 0 ? roles : role ? [role] : [])
+    .filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa');
+
+  const payload: { role: UserRole | null; roles: UserRole[]; updatedAt: Date; email?: string } = {
     role,
+    roles: normalizedRoles,
     updatedAt: new Date(),
   };
 
@@ -68,11 +95,23 @@ export const subscribeUsersForAdmin = (
     usersRef,
     (snapshot) => {
       const users = snapshot.docs.map((snapshotDoc) => {
-        const data = snapshotDoc.data() as { role?: UserRole | null; email?: string | null };
+        const data = snapshotDoc.data() as {
+          role?: UserRole | null;
+          roles?: UserRole[] | null;
+          email?: string | null;
+        };
+
+        const roles = Array.isArray(data.roles)
+          ? data.roles.filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa')
+          : data.role
+            ? [data.role]
+            : [];
+
         return {
           id: snapshotDoc.id,
           email: data.email ?? null,
           role: data.role ?? null,
+          roles,
         } satisfies UserProfile;
       });
 
@@ -86,13 +125,18 @@ export const subscribeUsersForAdmin = (
   );
 };
 
-export const updateUserRoleAsAdmin = async (uid: string, role: UserRole) => {
+export const updateUserRoleAsAdmin = async (uid: string, roles: UserRole[], currentRole?: UserRole | null) => {
   const userRef = doc(db, usersCollection, uid);
+
+  const normalizedRoles = roles.filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa');
+  const nextRole =
+    (currentRole && normalizedRoles.includes(currentRole) ? currentRole : normalizedRoles[0]) ?? null;
 
   await setDoc(
     userRef,
     {
-      role,
+      role: nextRole,
+      roles: normalizedRoles,
       updatedAt: new Date(),
     },
     { merge: true }
