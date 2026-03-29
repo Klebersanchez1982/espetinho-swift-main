@@ -85,6 +85,7 @@ export const useRestaurantStore = create<RestaurantState>()(
       role: null,
       availableRoles: [],
       setRole: (role) => {
+        set({ role });
         const uid = get().authUserId;
         const email = get().authEmail;
         if (uid) {
@@ -93,8 +94,6 @@ export const useRestaurantStore = create<RestaurantState>()(
           fireAndForget(setUserRoleInFirestore(uid, role, email, nextRoles));
           return;
         }
-
-        set({ role });
       },
 
       initRoleSync: (uid) => {
