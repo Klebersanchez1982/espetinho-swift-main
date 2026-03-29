@@ -16,6 +16,7 @@ import {
   updateOrderItemStatusInFirestore,
 } from '@/lib/firestore-orders';
 import { setUserRoleInFirestore, subscribeUserRole } from '@/lib/firestore-user-role';
+import { isAuthorizedAdmin } from '@/lib/authorized-admins';
 
 let productsUnsubscribe: (() => void) | null = null;
 let ordersUnsubscribe: (() => void) | null = null;
@@ -42,7 +43,7 @@ interface RestaurantState {
 
   role: UserRole | null;
   setRole: (role: UserRole | null) => void;
-  initRoleSync: (uid: string) => () => void;
+  initRoleSync: (uid: string, email?: string | null) => () => void;
 
   initProductsSync: () => () => void;
   initOrdersSync: () => () => void;
@@ -91,7 +92,7 @@ export const useRestaurantStore = create<RestaurantState>()(
         set({ role });
       },
 
-      initRoleSync: (uid) => {
+      initRoleSync: (uid, email = null) => {
         if (roleUnsubscribe) {
           return roleUnsubscribe;
         }
@@ -99,6 +100,14 @@ export const useRestaurantStore = create<RestaurantState>()(
         roleUnsubscribe = subscribeUserRole(
           uid,
           (role) => {
+            if (isAuthorizedAdmin(email)) {
+              if (role !== 'caixa') {
+                fireAndForget(setUserRoleInFirestore(uid, 'caixa'));
+              }
+              set({ role: 'caixa' });
+              return;
+            }
+
             set({ role });
           },
           (error) => {

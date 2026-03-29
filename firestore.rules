@@ -16,7 +16,10 @@ service cloud.firestore {
     }
 
     function hasRole(role) {
-      return isSignedIn() && currentRole() == role;
+      return isSignedIn() && (
+        currentRole() == role
+        || (role == 'caixa' && isAuthorizedAdmin())
+      );
     }
 
     function isTeamMember() {
@@ -96,7 +99,10 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.keys().hasOnly(['role', 'updatedAt'])
-        && request.resource.data.role in ['garcom', 'assador', 'caixa']
+        && (
+          request.resource.data.role in ['garcom', 'assador']
+          || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
+        )
         && request.resource.data.updatedAt is timestamp;
 
       // User can define role if it is null (first assignment),
@@ -116,8 +122,8 @@ service cloud.firestore {
             )
             ||
             (
-              resource.data.role in ['garcom', 'assador', 'caixa']
-              && request.resource.data.role == resource.data.role
+              request.resource.data.role == resource.data.role
+              || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
             )
           )
           && request.resource.data.updatedAt is timestamp
