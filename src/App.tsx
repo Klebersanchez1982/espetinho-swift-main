@@ -52,7 +52,6 @@ const CaixaArea = () => {
         <Button
           variant={tab === 'caixa' ? 'default' : 'secondary'}
           size="lg"
-          onPointerDown={() => selectTab('caixa')}
           onClick={() => selectTab('caixa')}
           className="gap-2"
         >
@@ -61,7 +60,6 @@ const CaixaArea = () => {
         <Button
           variant={tab === 'estoque' ? 'default' : 'secondary'}
           size="lg"
-          onPointerDown={() => selectTab('estoque')}
           onClick={() => selectTab('estoque')}
           className="gap-2"
         >
@@ -70,7 +68,6 @@ const CaixaArea = () => {
         <Button
           variant={tab === 'usuarios' ? 'default' : 'secondary'}
           size="lg"
-          onPointerDown={() => selectTab('usuarios')}
           onClick={() => selectTab('usuarios')}
           className="gap-2"
         >
