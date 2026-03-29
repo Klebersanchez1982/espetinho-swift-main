@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Flame, LogIn, Wrench } from 'lucide-react';
+import { Flame, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { signInOrCreateMaster, signInWithUsername } from '@/lib/auth';
+import { MASTER_DEFAULT_PASSWORD, MASTER_USERNAME, signInOrCreateMaster, signInWithUsername } from '@/lib/auth';
 
 const AuthPage = () => {
   const [username, setUsername] = useState('');
@@ -24,6 +24,11 @@ const AuthPage = () => {
     setError('');
 
     try {
+      if (username.trim().toLowerCase() === MASTER_USERNAME && password === MASTER_DEFAULT_PASSWORD) {
+        await signInOrCreateMaster();
+        return;
+      }
+
       await signInWithUsername(username.trim(), password);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Falha de autenticacao.';

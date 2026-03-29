@@ -80,13 +80,24 @@ export const signInOrCreateMaster = async () => {
     return await signInWithEmail(email, MASTER_DEFAULT_PASSWORD);
   } catch (error) {
     const code = getFirebaseErrorCode(error);
-    if (code !== 'auth/user-not-found') {
+    // Com Email Enumeration Protection, Firebase pode retornar invalid-credential
+    // mesmo quando o usuario ainda nao existe.
+    if (code !== 'auth/user-not-found' && code !== 'auth/invalid-credential') {
       throw error;
     }
   }
 
-  const credential = await registerWithEmail(email, MASTER_DEFAULT_PASSWORD);
-  return credential;
+  try {
+    const credential = await registerWithEmail(email, MASTER_DEFAULT_PASSWORD);
+    return credential;
+  } catch (error) {
+    const code = getFirebaseErrorCode(error);
+    if (code === 'auth/email-already-in-use' || code === 'auth/invalid-credential') {
+      throw new Error('Conta master ja existe com credenciais diferentes. Use o botao de master ou ajuste a senha no Firebase Auth.');
+    }
+
+    throw error;
+  }
 };
 
 export const signOutUser = async () => {
