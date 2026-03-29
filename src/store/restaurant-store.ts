@@ -15,7 +15,7 @@ import {
   subscribeOrders,
   updateOrderItemStatusInFirestore,
 } from '@/lib/firestore-orders';
-import { setUserRoleInFirestore, subscribeUserRole } from '@/lib/firestore-user-role';
+import { subscribeUserRole } from '@/lib/firestore-user-role';
 
 let productsUnsubscribe: (() => void) | null = null;
 let ordersUnsubscribe: (() => void) | null = null;
@@ -42,6 +42,7 @@ interface RestaurantState {
 
   role: UserRole | null;
   availableRoles: UserRole[];
+  roleSyncLoaded: boolean;
   setRole: (role: UserRole | null) => void;
   initRoleSync: (uid: string) => () => void;
 
@@ -78,6 +79,8 @@ export const useRestaurantStore = create<RestaurantState>()(
             authUserId: uid,
             authEmail: normalizedEmail,
             role: userChanged ? null : state.role,
+            availableRoles: userChanged ? [] : state.availableRoles,
+            roleSyncLoaded: userChanged ? false : state.roleSyncLoaded,
           };
         }),
       clearSession: () => {
@@ -86,6 +89,7 @@ export const useRestaurantStore = create<RestaurantState>()(
           authEmail: null,
           role: null,
           availableRoles: [],
+          roleSyncLoaded: false,
           caixaTab: 'caixa',
           orders: [],
           products: INITIAL_PRODUCTS,
@@ -98,16 +102,19 @@ export const useRestaurantStore = create<RestaurantState>()(
 
       role: null,
       availableRoles: [],
+      roleSyncLoaded: false,
       setRole: (role) => {
-        set({ role });
-        const uid = get().authUserId;
-        const email = get().authEmail;
-        if (uid) {
-          const currentRoles = get().availableRoles;
-          const nextRoles = role && !currentRoles.includes(role) ? [...currentRoles, role] : currentRoles;
-          fireAndForget(setUserRoleInFirestore(uid, role, email, nextRoles));
+        if (!role) {
+          set({ role: null });
           return;
         }
+
+        const availableRoles = get().availableRoles;
+        if (!availableRoles.includes(role)) {
+          return;
+        }
+
+        set({ role });
       },
 
       caixaTab: 'caixa',
@@ -121,10 +128,20 @@ export const useRestaurantStore = create<RestaurantState>()(
         roleUnsubscribe = subscribeUserRole(
           uid,
           (role, roles) => {
-            set({ role, availableRoles: roles });
+            set((state) => {
+              const hasCurrentRole = state.role ? roles.includes(state.role) : false;
+              const nextRole = hasCurrentRole ? state.role : role && roles.includes(role) ? role : null;
+
+              return {
+                role: nextRole,
+                availableRoles: roles,
+                roleSyncLoaded: true,
+              };
+            });
           },
           (error) => {
             console.error('Erro ao ouvir role do usuario:', error);
+            set({ roleSyncLoaded: true, role: null, availableRoles: [] });
           }
         );
 

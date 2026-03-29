@@ -1,26 +1,12 @@
-import { useEffect } from 'react';
 import { Flame, UtensilsCrossed, ChefHat, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRestaurantStore } from '@/store/restaurant-store';
-import { isAuthorizedAdmin } from '@/lib/authorized-admins';
 import { UserRole } from '@/types/restaurant';
-
-const baseRoles: { role: Exclude<UserRole, 'caixa'>; label: string; icon: React.ReactNode; desc: string }[] = [
-  { role: 'garcom', label: 'Garçom', icon: <UtensilsCrossed className="h-8 w-8" />, desc: 'Criar comandas e gerenciar pedidos' },
-  { role: 'assador', label: 'Assador', icon: <ChefHat className="h-8 w-8" />, desc: 'Visualizar e preparar pedidos' },
-];
 
 const RoleSelect = () => {
   const setRole = useRestaurantStore((s) => s.setRole);
-  const authEmail = useRestaurantStore((s) => s.authEmail);
   const availableRoles = useRestaurantStore((s) => s.availableRoles);
-  const isAuthorized = isAuthorizedAdmin(authEmail);
-
-  useEffect(() => {
-    if (isAuthorized && availableRoles.length === 0) {
-      setRole('caixa');
-    }
-  }, [isAuthorized, availableRoles.length, setRole]);
+  const roleSyncLoaded = useRestaurantStore((s) => s.roleSyncLoaded);
 
   const roleMap: Record<UserRole, { role: UserRole; label: string; icon: React.ReactNode; desc: string }> = {
     garcom: {
@@ -43,11 +29,21 @@ const RoleSelect = () => {
     },
   };
 
-  const roles = isAuthorized
-    ? [...baseRoles, roleMap.caixa]
-    : availableRoles.length > 0
-    ? availableRoles.map((role) => roleMap[role])
-    : baseRoles;
+  const roles = availableRoles.map((role) => roleMap[role]);
+
+  if (!roleSyncLoaded || roles.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-6">
+        <div className="flex items-center gap-3 text-primary">
+          <Flame className="h-10 w-10" />
+          <h1 className="font-display text-4xl font-bold tracking-tight">Na Brasa</h1>
+        </div>
+        <p className="text-center text-muted-foreground text-lg">
+          Seu acesso ainda nao foi liberado. Procure o administrador.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-6">

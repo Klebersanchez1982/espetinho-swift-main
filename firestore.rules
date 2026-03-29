@@ -24,10 +24,6 @@ service cloud.firestore {
       return hasRole('garcom') || hasRole('assador') || hasRole('caixa');
     }
 
-    function validRoleValue(value) {
-      return value == null || value in ['garcom', 'assador', 'caixa'];
-    }
-
     function validProductWrite() {
       return request.resource.data.keys().hasOnly([
         'name',
@@ -119,6 +115,37 @@ service cloud.firestore {
           );
       }
 
+      function validSelfIdentityCreateOnly() {
+        return request.resource.data.keys().hasOnly(['email', 'username', 'updatedAt'])
+          && validEmailForSelf()
+          && validUsernameField()
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      function validSelfIdentityUpdateOnly() {
+        return request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && validEmailForSelf()
+          && validUsernameField()
+          && request.resource.data.updatedAt is timestamp
+          && (
+            (!('role' in resource.data) && !('role' in request.resource.data))
+            || request.resource.data.role == resource.data.role
+          )
+          && (
+            (!('roles' in resource.data) && !('roles' in request.resource.data))
+            || (
+              'roles' in resource.data
+              && 'roles' in request.resource.data
+              && request.resource.data.roles == resource.data.roles
+            )
+          );
+      }
+
+      function validEmailForAdminCreate() {
+        return !('email' in request.resource.data)
+          || request.resource.data.email is string;
+      }
+
       function validEmailForAdminWrite() {
         return !('email' in request.resource.data)
           || (
@@ -130,55 +157,21 @@ service cloud.firestore {
       allow create: if (
           isSignedIn()
           && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
-          && validEmailForSelf()
-          && validUsernameField()
-          && (
-            // sincronizacao inicial sem perfil definido
-            (!('role' in request.resource.data) && !('roles' in request.resource.data))
-            || (
-              validRoleAndRoles()
-              && (
-                request.resource.data.role in ['garcom', 'assador']
-                || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
-              )
-            )
-          )
-          && request.resource.data.updatedAt is timestamp
+          && validSelfIdentityCreateOnly()
         )
         || (
           hasRole('caixa')
           && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
           && validRoleAndRoles()
           && validUsernameField()
+          && validEmailForAdminCreate()
           && request.resource.data.updatedAt is timestamp
         );
 
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
-          && validEmailForSelf()
-          && validUsernameField()
-          && (
-            // self troca somente perfil atual dentro dos modulos liberados
-            (
-              validRoleAndRoles()
-              && (
-                (('roles' in resource.data) && request.resource.data.roles == resource.data.roles)
-                || (!('roles' in resource.data) && request.resource.data.role in ['garcom', 'assador'])
-                || isAuthorizedAdmin()
-              )
-            )
-            // ou apenas sincroniza campos de identidade
-            || (
-              (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
-              && (!('roles' in request.resource.data)
-                || !('roles' in resource.data)
-                || request.resource.data.roles == resource.data.roles)
-            )
-          )
-          && request.resource.data.updatedAt is timestamp
+          && validSelfIdentityUpdateOnly()
         )
         || (
           hasRole('caixa')
