@@ -39,7 +39,20 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-        run: npm run build -- --base=/${{ github.event.repository.name }}/
+        run: |
+          if [ -z "$VITE_FIREBASE_API_KEY" ]; then
+            echo "VITE_FIREBASE_API_KEY ausente no GitHub Secret"
+            exit 1
+          fi
+          if [[ "$VITE_FIREBASE_API_KEY" =~ ^["\'] ]] || [[ "$VITE_FIREBASE_API_KEY" =~ ["\',]$ ]]; then
+            echo "VITE_FIREBASE_API_KEY parece conter aspas/virgula. Salve apenas o valor puro."
+            exit 1
+          fi
+          if ! [[ "$VITE_FIREBASE_API_KEY" =~ ^AIza[0-9A-Za-z_-]{35}$ ]]; then
+            echo "VITE_FIREBASE_API_KEY com formato invalido. Copie novamente da configuracao Web do Firebase."
+            exit 1
+          fi
+          npm run build -- --base=/${{ github.event.repository.name }}/
 
       - name: Prevent Jekyll processing
         run: touch dist/.nojekyll
