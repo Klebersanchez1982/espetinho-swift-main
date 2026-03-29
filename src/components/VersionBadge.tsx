@@ -4,10 +4,19 @@ export const useAppVersion = () => {
   const [version, setVersion] = useState<string>('loading...');
 
   useEffect(() => {
-    fetch('/VERSION.json')
-      .then((res) => res.json())
-      .then((data) => setVersion(data.version))
-      .catch(() => setVersion('unknown'));
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const versionUrl = new URL('VERSION.json', window.location.origin + baseUrl).toString();
+    
+    fetch(versionUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setVersion(data.version ?? 'unknown'))
+      .catch((error) => {
+        console.error('Erro ao carregar versão:', error);
+        setVersion('unknown');
+      });
   }, []);
 
   return version;
