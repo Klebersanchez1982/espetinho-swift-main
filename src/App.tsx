@@ -127,19 +127,14 @@ const AppBootstrap = () => {
   const initRoleSync = useRestaurantStore((s) => s.initRoleSync);
   const initProductsSync = useRestaurantStore((s) => s.initProductsSync);
   const initOrdersSync = useRestaurantStore((s) => s.initOrdersSync);
+  const role = useRestaurantStore((s) => s.role);
 
   useEffect(() => {
     let cleanupRole = () => {};
-    let cleanupProducts = () => {};
-    let cleanupOrders = () => {};
     const unsubscribeAuth = subscribeAuthState((user) => {
       cleanupRole();
-      cleanupProducts();
-      cleanupOrders();
 
       cleanupRole = () => {};
-      cleanupProducts = () => {};
-      cleanupOrders = () => {};
 
       if (!user) {
         clearSession();
@@ -151,17 +146,27 @@ const AppBootstrap = () => {
         console.error('Erro ao sincronizar email do usuario:', error);
       });
       cleanupRole = initRoleSync(user.uid);
-      cleanupProducts = initProductsSync();
-      cleanupOrders = initOrdersSync();
     });
 
     return () => {
       unsubscribeAuth();
       cleanupRole();
+    };
+  }, [setAuthUserId, clearSession, initRoleSync]);
+
+  useEffect(() => {
+    if (!role) {
+      return;
+    }
+
+    const cleanupProducts = initProductsSync();
+    const cleanupOrders = initOrdersSync();
+
+    return () => {
       cleanupProducts();
       cleanupOrders();
     };
-  }, [setAuthUserId, clearSession, initRoleSync, initProductsSync, initOrdersSync]);
+  }, [role, initProductsSync, initOrdersSync]);
 
   return null;
 };
