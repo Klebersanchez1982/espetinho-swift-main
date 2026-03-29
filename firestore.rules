@@ -93,13 +93,23 @@ service cloud.firestore {
         && request.resource.data.role in ['garcom', 'assador', 'caixa']
         && request.resource.data.updatedAt is timestamp;
 
-      // User can update timestamp, but role cannot be changed after creation.
+      // User can define role if it is null (first assignment),
+      // then cannot change it anymore. Caixa can manage any role.
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
           && request.resource.data.keys().hasOnly(['role', 'updatedAt'])
-          && resource.data.role in ['garcom', 'assador', 'caixa']
-          && request.resource.data.role == resource.data.role
+          && (
+            (
+              resource.data.role == null
+              && request.resource.data.role in ['garcom', 'assador', 'caixa']
+            )
+            ||
+            (
+              resource.data.role in ['garcom', 'assador', 'caixa']
+              && request.resource.data.role == resource.data.role
+            )
+          )
           && request.resource.data.updatedAt is timestamp
         )
         || (
