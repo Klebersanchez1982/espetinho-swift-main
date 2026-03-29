@@ -1,10 +1,10 @@
-import { Flame, LogOut } from 'lucide-react';
+import { Flame, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRestaurantStore } from '@/store/restaurant-store';
 import { signOutUser } from '@/lib/auth';
 
 const AppHeader = () => {
-  const { role } = useRestaurantStore();
+  const { role, clearRole } = useRestaurantStore();
 
   const roleLabels = { garcom: 'Garçom', assador: 'Assador', caixa: 'Caixa' };
 
@@ -20,7 +20,20 @@ const AppHeader = () => {
         <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
           {roleLabels[role]}
         </span>
-        <Button variant="ghost" size="icon-lg" onClick={() => void signOutUser()}>
+        <Button 
+          variant="ghost" 
+          size="icon-lg" 
+          onClick={() => clearRole()}
+          title="Trocar perfil"
+        >
+          <RefreshCw className="h-5 w-5" />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon-lg" 
+          onClick={() => void signOutUser()}
+          title="Sair"
+        >
           <LogOut className="h-5 w-5" />
         </Button>
       </div>

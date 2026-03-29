@@ -38,6 +38,7 @@ interface RestaurantState {
   authEmail: string | null;
   setAuthUserId: (uid: string | null, email?: string | null) => void;
   clearSession: () => void;
+  clearRole: () => void;
 
   role: UserRole | null;
   setRole: (role: UserRole | null) => void;
@@ -73,6 +74,10 @@ export const useRestaurantStore = create<RestaurantState>()(
           orders: [],
           products: INITIAL_PRODUCTS,
         });
+      },
+
+      clearRole: () => {
+        set({ role: null });
       },
 
       role: null,
