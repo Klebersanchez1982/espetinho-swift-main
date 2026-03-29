@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -40,18 +39,20 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         run: |
-          if [ -z "$VITE_FIREBASE_API_KEY" ]; then
+          RAW_API_KEY="$VITE_FIREBASE_API_KEY"
+          CLEAN_API_KEY="$(printf '%s' "$RAW_API_KEY" | tr -d '\"\047,' | xargs)"
+
+          if [ -z "$CLEAN_API_KEY" ]; then
             echo "VITE_FIREBASE_API_KEY ausente no GitHub Secret"
             exit 1
           fi
-          if [[ "$VITE_FIREBASE_API_KEY" =~ ^["\'] ]] || [[ "$VITE_FIREBASE_API_KEY" =~ ["\',]$ ]]; then
-            echo "VITE_FIREBASE_API_KEY parece conter aspas/virgula. Salve apenas o valor puro."
-            exit 1
-          fi
-          if ! [[ "$VITE_FIREBASE_API_KEY" =~ ^AIza[0-9A-Za-z_-]{35}$ ]]; then
+
+          if ! [[ "$CLEAN_API_KEY" =~ ^AIza[0-9A-Za-z_-]{35}$ ]]; then
             echo "VITE_FIREBASE_API_KEY com formato invalido. Copie novamente da configuracao Web do Firebase."
             exit 1
           fi
+
+          export VITE_FIREBASE_API_KEY="$CLEAN_API_KEY"
           npm run build -- --base=/${{ github.event.repository.name }}/
 
       - name: Prevent Jekyll processing
