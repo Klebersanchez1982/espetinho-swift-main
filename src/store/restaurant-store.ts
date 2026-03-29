@@ -35,7 +35,8 @@ const fireAndForget = (promise: Promise<void>) => {
 
 interface RestaurantState {
   authUserId: string | null;
-  setAuthUserId: (uid: string | null) => void;
+  authEmail: string | null;
+  setAuthUserId: (uid: string | null, email?: string | null) => void;
   clearSession: () => void;
 
   role: UserRole | null;
@@ -62,10 +63,12 @@ export const useRestaurantStore = create<RestaurantState>()(
   persist(
     (set, get) => ({
       authUserId: null,
-      setAuthUserId: (uid) => set({ authUserId: uid }),
+      authEmail: null,
+      setAuthUserId: (uid, email = null) => set({ authUserId: uid, authEmail: email ?? null }),
       clearSession: () => {
         set({
           authUserId: null,
+          authEmail: null,
           role: null,
           orders: [],
           products: INITIAL_PRODUCTS,

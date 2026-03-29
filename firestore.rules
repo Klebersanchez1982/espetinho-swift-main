@@ -5,6 +5,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAuthorizedAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'klebersanchez1982@gmail.com'
+      );
+    }
+
     function currentRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
@@ -95,6 +101,7 @@ service cloud.firestore {
 
       // User can define role if it is null (first assignment),
       // then cannot change it anymore. Caixa can manage any role.
+      // Only authorized admins can self-assign 'caixa' role.
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
@@ -102,7 +109,10 @@ service cloud.firestore {
           && (
             (
               resource.data.role == null
-              && request.resource.data.role in ['garcom', 'assador', 'caixa']
+              && (
+                request.resource.data.role in ['garcom', 'assador']
+                || (request.resource.data.role == 'caixa' && isAuthorizedAdmin())
+              )
             )
             ||
             (
