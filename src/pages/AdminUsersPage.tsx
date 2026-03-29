@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, UserCog } from 'lucide-react';
+import { Ban, ShieldCheck, ShieldOff, Trash2, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createManagedUserAsAdmin, subscribeUsersForAdmin, updateUserRoleAsAdmin, type UserProfile } from '@/lib/firestore-user-role';
+import {
+  createManagedUserAsAdmin,
+  deleteUserProfileAsAdmin,
+  setUserDisabledAsAdmin,
+  subscribeUsersForAdmin,
+  updateUserRoleAsAdmin,
+  type UserProfile,
+} from '@/lib/firestore-user-role';
 import { UserRole } from '@/types/restaurant';
 
 const roles: UserRole[] = ['garcom', 'assador', 'caixa'];
@@ -12,14 +19,19 @@ const labels: Record<UserRole, string> = {
   caixa: 'Caixa',
 };
 
+type UserFilter = 'todos' | 'ativos' | 'bloqueados';
+
 const AdminUsersPage = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [blockingUserId, setBlockingUserId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRoles, setNewRoles] = useState<UserRole[]>(['garcom']);
+  const [userFilter, setUserFilter] = useState<UserFilter>('todos');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -60,6 +72,12 @@ const AdminUsersPage = () => {
     }
   };
 
+  const isProtectedUser = (user: UserProfile) => {
+    const username = (user.username ?? '').toLowerCase();
+    const email = (user.email ?? '').toLowerCase();
+    return username === 'master2' || email === 'master2@nabrasa.local';
+  };
+
   const toggleNewRole = (role: UserRole) => {
     setNewRoles((prev) => {
       if (prev.includes(role)) {
@@ -95,6 +113,52 @@ const AdminUsersPage = () => {
       setCreating(false);
     }
   };
+
+  const deleteUser = async (user: UserProfile) => {
+    if (isProtectedUser(user)) {
+      setError('O usuario master2 e protegido e nao pode ser excluido.');
+      return;
+    }
+
+    const userLabel = user.username || user.email || user.id;
+    const confirmed = window.confirm(`Deseja realmente excluir o usuario ${userLabel}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingUserId(user.id);
+    setError('');
+    try {
+      await deleteUserProfileAsAdmin(user.id);
+    } catch {
+      setError('Falha ao excluir usuario. Verifique as permissoes no Firestore.');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
+  const toggleBlocked = async (user: UserProfile) => {
+    if (isProtectedUser(user)) {
+      setError('O usuario master2 e protegido e nao pode ser bloqueado.');
+      return;
+    }
+
+    setBlockingUserId(user.id);
+    setError('');
+    try {
+      await setUserDisabledAsAdmin(user.id, !user.disabled);
+    } catch {
+      setError('Falha ao alterar status de bloqueio do usuario.');
+    } finally {
+      setBlockingUserId(null);
+    }
+  };
+
+  const filteredUsers = users.filter((user) => {
+    if (userFilter === 'ativos') return !user.disabled;
+    if (userFilter === 'bloqueados') return user.disabled;
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -149,21 +213,53 @@ const AdminUsersPage = () => {
         </div>
       )}
 
+      {!loading && users.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={userFilter === 'todos' ? 'default' : 'secondary'} onClick={() => setUserFilter('todos')}>
+            Todos ({users.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={userFilter === 'ativos' ? 'default' : 'secondary'}
+            onClick={() => setUserFilter('ativos')}
+          >
+            Ativos ({users.filter((u) => !u.disabled).length})
+          </Button>
+          <Button
+            size="sm"
+            variant={userFilter === 'bloqueados' ? 'default' : 'secondary'}
+            onClick={() => setUserFilter('bloqueados')}
+          >
+            Bloqueados ({users.filter((u) => u.disabled).length})
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="rounded-lg border border-border bg-card p-4 text-muted-foreground">Carregando usuarios...</div>
       ) : users.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-4 text-muted-foreground">
           Nenhum usuario com perfil definido ainda.
         </div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card p-4 text-muted-foreground">
+          Nenhum usuario encontrado para este filtro.
+        </div>
       ) : (
         <div className="grid gap-3">
-          {users.map((user) => (
+          {filteredUsers.map((user) => (
             <div key={user.id} className="rounded-lg border border-border bg-card p-4">
               <div className="mb-3 flex items-center gap-2">
                 <UserCog className="h-4 w-4 text-primary" />
                 <div>
                   <p className="text-sm font-medium break-all">{user.username ?? 'usuario-nao-definido'}</p>
                   <p className="text-xs text-muted-foreground break-all">{user.email ?? 'Email nao informado'}</p>
+                  {user.disabled && (
+                    <p className="text-xs font-medium text-destructive">Usuario bloqueado</p>
+                  )}
+                  {isProtectedUser(user) && (
+                    <p className="text-xs font-medium text-primary">Usuario protegido</p>
+                  )}
                 </div>
               </div>
 
@@ -173,12 +269,32 @@ const AdminUsersPage = () => {
                     key={role}
                     size="sm"
                     variant={(user.roles.length > 0 ? user.roles : user.role ? [user.role] : []).includes(role) ? 'default' : 'secondary'}
-                    disabled={updatingUserId === user.id}
+                    disabled={updatingUserId === user.id || deletingUserId === user.id || blockingUserId === user.id || user.disabled}
                     onClick={() => toggleRole(user, role)}
                   >
                     {labels[role]}
                   </Button>
                 ))}
+
+                <Button
+                  size="sm"
+                  variant={user.disabled ? 'secondary' : 'warning'}
+                  disabled={blockingUserId === user.id || isProtectedUser(user)}
+                  onClick={() => toggleBlocked(user)}
+                >
+                  {user.disabled ? <ShieldOff className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                  {blockingUserId === user.id ? 'Salvando...' : user.disabled ? 'Desbloquear' : 'Bloquear'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={deletingUserId === user.id || isProtectedUser(user) || user.disabled}
+                  onClick={() => deleteUser(user)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deletingUserId === user.id ? 'Excluindo...' : 'Excluir'}
+                </Button>
               </div>
             </div>
           ))}

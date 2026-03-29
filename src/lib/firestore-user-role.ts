@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserRole } from '@/types/restaurant';
 import { createAuthUserWithUsername, normalizeUsername } from '@/lib/auth';
@@ -13,11 +13,12 @@ export interface UserProfile {
   username: string | null;
   role: UserRole | null;
   roles: UserRole[];
+  disabled: boolean;
 }
 
 export const subscribeUserRole = (
   uid: string,
-  onRole: (role: UserRole | null, roles: UserRole[]) => void,
+  onRole: (role: UserRole | null, roles: UserRole[], disabled: boolean) => void,
   onError?: (error: unknown) => void
 ): Unsubscribe => {
   const userRef = doc(db, usersCollection, uid);
@@ -26,18 +27,25 @@ export const subscribeUserRole = (
     userRef,
     (snapshot) => {
       if (!snapshot.exists()) {
-        onRole(null, []);
+        onRole(null, [], false);
         return;
       }
 
-      const data = snapshot.data() as { role?: UserRole | null; roles?: UserRole[] | null };
+      const data = snapshot.data() as { role?: UserRole | null; roles?: UserRole[] | null; disabled?: boolean | null };
       const roles = Array.isArray(data.roles)
         ? data.roles.filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa')
         : data.role
           ? [data.role]
           : [];
 
-      onRole(data.role ?? null, roles);
+      const disabled = data.disabled === true;
+
+      if (disabled) {
+        onRole(null, [], true);
+        return;
+      }
+
+      onRole(data.role ?? null, roles, false);
     },
     (error) => {
       if (onError) {
@@ -82,6 +90,7 @@ export const ensureAuthorizedAdminAccess = async (uid: string, email: string | n
       username: usernameFromEmail || null,
       role: 'caixa',
       roles: ['caixa', 'garcom', 'assador'],
+      disabled: false,
       updatedAt: new Date(),
     },
     { merge: true }
@@ -134,6 +143,7 @@ export const subscribeUsersForAdmin = (
           roles?: UserRole[] | null;
           email?: string | null;
           username?: string | null;
+          disabled?: boolean | null;
         };
 
         const roles = Array.isArray(data.roles)
@@ -148,6 +158,7 @@ export const subscribeUsersForAdmin = (
           username: data.username ?? null,
           role: data.role ?? null,
           roles,
+          disabled: data.disabled === true,
         } satisfies UserProfile;
       });
 
@@ -199,10 +210,28 @@ export const createManagedUserAsAdmin = async (
       username: created.username,
       role: normalizedRoles[0],
       roles: normalizedRoles,
+      disabled: false,
       updatedAt: new Date(),
     },
     { merge: true }
   );
 
   return created;
+};
+
+export const deleteUserProfileAsAdmin = async (uid: string) => {
+  await deleteDoc(doc(db, usersCollection, uid));
+};
+
+export const setUserDisabledAsAdmin = async (uid: string, disabled: boolean) => {
+  const userRef = doc(db, usersCollection, uid);
+
+  await setDoc(
+    userRef,
+    {
+      disabled,
+      updatedAt: new Date(),
+    },
+    { merge: true }
+  );
 };

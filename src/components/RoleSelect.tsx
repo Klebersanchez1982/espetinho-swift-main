@@ -2,11 +2,13 @@ import { Flame, UtensilsCrossed, ChefHat, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRestaurantStore } from '@/store/restaurant-store';
 import { UserRole } from '@/types/restaurant';
+import { signOutUser } from '@/lib/auth';
 
 const RoleSelect = () => {
   const setRole = useRestaurantStore((s) => s.setRole);
   const availableRoles = useRestaurantStore((s) => s.availableRoles);
   const roleSyncLoaded = useRestaurantStore((s) => s.roleSyncLoaded);
+  const userBlocked = useRestaurantStore((s) => s.userBlocked);
 
   const roleMap: Record<UserRole, { role: UserRole; label: string; icon: React.ReactNode; desc: string }> = {
     garcom: {
@@ -39,8 +41,13 @@ const RoleSelect = () => {
           <h1 className="font-display text-4xl font-bold tracking-tight">Na Brasa</h1>
         </div>
         <p className="text-center text-muted-foreground text-lg">
-          Seu acesso ainda nao foi liberado. Procure o administrador.
+          {userBlocked
+            ? 'Seu usuario foi bloqueado. Procure o administrador.'
+            : 'Seu acesso ainda nao foi liberado. Procure o administrador.'}
         </p>
+        <Button variant="secondary" size="lg" onClick={() => void signOutUser()}>
+          Voltar para login
+        </Button>
       </div>
     );
   }

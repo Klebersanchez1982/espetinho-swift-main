@@ -43,6 +43,7 @@ interface RestaurantState {
   role: UserRole | null;
   availableRoles: UserRole[];
   roleSyncLoaded: boolean;
+  userBlocked: boolean;
   setRole: (role: UserRole | null) => void;
   initRoleSync: (uid: string) => () => void;
 
@@ -81,6 +82,7 @@ export const useRestaurantStore = create<RestaurantState>()(
             role: userChanged ? null : state.role,
             availableRoles: userChanged ? [] : state.availableRoles,
             roleSyncLoaded: userChanged ? false : state.roleSyncLoaded,
+            userBlocked: userChanged ? false : state.userBlocked,
           };
         }),
       clearSession: () => {
@@ -90,6 +92,7 @@ export const useRestaurantStore = create<RestaurantState>()(
           role: null,
           availableRoles: [],
           roleSyncLoaded: false,
+          userBlocked: false,
           caixaTab: 'caixa',
           orders: [],
           products: INITIAL_PRODUCTS,
@@ -103,6 +106,7 @@ export const useRestaurantStore = create<RestaurantState>()(
       role: null,
       availableRoles: [],
       roleSyncLoaded: false,
+      userBlocked: false,
       setRole: (role) => {
         if (!role) {
           set({ role: null });
@@ -127,8 +131,17 @@ export const useRestaurantStore = create<RestaurantState>()(
 
         roleUnsubscribe = subscribeUserRole(
           uid,
-          (role, roles) => {
+          (role, roles, disabled) => {
             set((state) => {
+              if (disabled) {
+                return {
+                  role: null,
+                  availableRoles: [],
+                  roleSyncLoaded: true,
+                  userBlocked: true,
+                };
+              }
+
               const hasCurrentRole = state.role ? roles.includes(state.role) : false;
               const nextRole = hasCurrentRole ? state.role : role && roles.includes(role) ? role : null;
 
@@ -136,12 +149,13 @@ export const useRestaurantStore = create<RestaurantState>()(
                 role: nextRole,
                 availableRoles: roles,
                 roleSyncLoaded: true,
+                userBlocked: false,
               };
             });
           },
           (error) => {
             console.error('Erro ao ouvir role do usuario:', error);
-            set({ roleSyncLoaded: true, role: null, availableRoles: [] });
+            set({ roleSyncLoaded: true, role: null, availableRoles: [], userBlocked: false });
           }
         );
 

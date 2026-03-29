@@ -100,6 +100,11 @@ service cloud.firestore {
           && request.resource.data.roles.hasAny([request.resource.data.role]);
       }
 
+      function validDisabledField() {
+        return !('disabled' in request.resource.data)
+          || request.resource.data.disabled is bool;
+      }
+
       function validUsernameField() {
         return !('username' in request.resource.data)
           || (
@@ -124,9 +129,10 @@ service cloud.firestore {
       }
 
       function validSelfIdentityUpdateOnly() {
-        return request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+        return request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
           && validEmailForSelf()
           && validUsernameField()
+          && validDisabledField()
           && request.resource.data.updatedAt is timestamp
           && (
             (!('role' in resource.data) && !('role' in request.resource.data))
@@ -139,17 +145,26 @@ service cloud.firestore {
               && 'roles' in request.resource.data
               && request.resource.data.roles == resource.data.roles
             )
+          )
+          && (
+            (!('disabled' in resource.data) && !('disabled' in request.resource.data))
+            || (
+              'disabled' in resource.data
+              && 'disabled' in request.resource.data
+              && request.resource.data.disabled == resource.data.disabled
+            )
           );
       }
 
       function validAuthorizedAdminSelfBootstrap() {
         return isAuthorizedAdmin()
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
           && validRoleAndRoles()
           && request.resource.data.role == 'caixa'
           && request.resource.data.roles.hasAny(['caixa'])
           && validEmailForSelf()
           && validUsernameField()
+          && validDisabledField()
           && request.resource.data.updatedAt is timestamp;
       }
 
@@ -166,6 +181,31 @@ service cloud.firestore {
           );
       }
 
+      function validAdminIdentityOrBlockOnly() {
+        return request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
+          && validUsernameField()
+          && validDisabledField()
+          && validEmailForAdminWrite()
+          && request.resource.data.updatedAt is timestamp
+          && (
+            (!('role' in resource.data) && !('role' in request.resource.data))
+            || request.resource.data.role == resource.data.role
+          )
+          && (
+            (!('roles' in resource.data) && !('roles' in request.resource.data))
+            || (
+              'roles' in resource.data
+              && 'roles' in request.resource.data
+              && request.resource.data.roles == resource.data.roles
+            )
+          );
+      }
+
+      function isProtectedMasterUser() {
+        return (('username' in resource.data) && resource.data.username == 'master2')
+          || (('email' in resource.data) && resource.data.email == 'master2@nabrasa.local');
+      }
+
       allow create: if (
           isSignedIn()
           && request.auth.uid == userId
@@ -173,9 +213,10 @@ service cloud.firestore {
         )
         || (
           hasRole('caixa')
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
           && validRoleAndRoles()
           && validUsernameField()
+          && validDisabledField()
           && validEmailForAdminCreate()
           && request.resource.data.updatedAt is timestamp
         );
@@ -187,14 +228,20 @@ service cloud.firestore {
         )
         || (
           hasRole('caixa')
-          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
-          && validRoleAndRoles()
-          && validUsernameField()
-          && validEmailForAdminWrite()
-          && request.resource.data.updatedAt is timestamp
+          && (
+            (
+              request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username', 'disabled'])
+              && validRoleAndRoles()
+              && validUsernameField()
+              && validDisabledField()
+              && validEmailForAdminWrite()
+              && request.resource.data.updatedAt is timestamp
+            )
+            || validAdminIdentityOrBlockOnly()
+          )
         );
 
-      allow delete: if false;
+      allow delete: if hasRole('caixa') && !isProtectedMasterUser();
     }
 
     // products
