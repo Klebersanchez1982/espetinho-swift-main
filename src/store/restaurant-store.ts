@@ -16,6 +16,7 @@ import {
   updateOrderItemStatusInFirestore,
 } from '@/lib/firestore-orders';
 import { setUserRoleInFirestore, subscribeUserRole } from '@/lib/firestore-user-role';
+import { isAuthorizedAdmin } from '@/lib/authorized-admins';
 
 let productsUnsubscribe: (() => void) | null = null;
 let ordersUnsubscribe: (() => void) | null = null;
@@ -88,6 +89,10 @@ export const useRestaurantStore = create<RestaurantState>()(
         set({ role });
         const uid = get().authUserId;
         const email = get().authEmail;
+        // Admins autorizados não precisam sincronizar com Firestore
+        if (isAuthorizedAdmin(email)) {
+          return;
+        }
         if (uid) {
           const currentRoles = get().availableRoles;
           const nextRoles = role && !currentRoles.includes(role) ? [...currentRoles, role] : currentRoles;

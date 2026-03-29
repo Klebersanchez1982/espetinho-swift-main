@@ -15,6 +15,14 @@ const RoleSelect = () => {
   const availableRoles = useRestaurantStore((s) => s.availableRoles);
   const isAuthorized = isAuthorizedAdmin(authEmail);
 
+  // Admins autorizados vão direto para caixa
+  if (isAuthorized) {
+    const caixaRole: UserRole = 'caixa';
+    setRole(caixaRole);
+    // Não renderiza este componente
+    return null;
+  }
+
   const roleMap: Record<UserRole, { role: UserRole; label: string; icon: React.ReactNode; desc: string }> = {
     garcom: {
       role: 'garcom',
@@ -36,11 +44,9 @@ const RoleSelect = () => {
     },
   };
 
-  const roles = isAuthorized
-    ? [...baseRoles, roleMap.caixa]
-    : availableRoles.length > 0
-      ? availableRoles.map((role) => roleMap[role])
-      : baseRoles;
+  const roles = availableRoles.length > 0
+    ? availableRoles.map((role) => roleMap[role])
+    : baseRoles;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-6">
@@ -66,10 +72,6 @@ const RoleSelect = () => {
           </Button>
         ))}
       </div>
-
-      {isAuthorized && (
-        <p className="text-xs text-muted-foreground">Usuario admin: modulos Garçom, Assador e Caixa liberados.</p>
-      )}
     </div>
   );
 };
