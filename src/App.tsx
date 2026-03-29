@@ -8,7 +8,7 @@ import { VersionBadge } from "@/components/VersionBadge";
 import { useRestaurantStore } from "@/store/restaurant-store";
 import { subscribeAuthState } from "@/lib/auth";
 import { firebaseConfigError } from "@/lib/firebase";
-import { ensureUserEmailInFirestore } from "@/lib/firestore-user-role";
+import { ensureAuthorizedAdminAccess, ensureUserEmailInFirestore } from "@/lib/firestore-user-role";
 import RoleSelect from "@/components/RoleSelect";
 import AppHeader from "@/components/AppHeader";
 import AuthPage from "@/components/AuthPage";
@@ -144,6 +144,9 @@ const AppBootstrap = () => {
       setAuthUserId(user.uid, user.email);
       void ensureUserEmailInFirestore(user.uid, user.email).catch((error) => {
         console.error('Erro ao sincronizar email do usuario:', error);
+      });
+      void ensureAuthorizedAdminAccess(user.uid, user.email).catch((error) => {
+        console.error('Erro ao garantir acesso admin autorizado:', error);
       });
       cleanupRole = initRoleSync(user.uid);
     });

@@ -2,6 +2,7 @@ import { collection, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/
 import { db } from '@/lib/firebase';
 import { UserRole } from '@/types/restaurant';
 import { createAuthUserWithUsername, normalizeUsername } from '@/lib/auth';
+import { isAuthorizedAdmin } from '@/lib/authorized-admins';
 
 const usersCollection = 'users';
 const usersRef = collection(db, usersCollection);
@@ -59,6 +60,28 @@ export const ensureUserEmailInFirestore = async (uid: string, email: string | nu
     {
       email: normalizedEmail,
       username: usernameFromEmail || null,
+      updatedAt: new Date(),
+    },
+    { merge: true }
+  );
+};
+
+export const ensureAuthorizedAdminAccess = async (uid: string, email: string | null | undefined) => {
+  if (!email || !isAuthorizedAdmin(email)) {
+    return;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const usernameFromEmail = normalizeUsername(normalizedEmail.split('@')[0] ?? '');
+  const userRef = doc(db, usersCollection, uid);
+
+  await setDoc(
+    userRef,
+    {
+      email: normalizedEmail,
+      username: usernameFromEmail || null,
+      role: 'caixa',
+      roles: ['caixa', 'garcom', 'assador'],
       updatedAt: new Date(),
     },
     { merge: true }

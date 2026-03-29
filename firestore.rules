@@ -141,6 +141,17 @@ service cloud.firestore {
           );
       }
 
+      function validAuthorizedAdminSelfBootstrap() {
+        return isAuthorizedAdmin()
+          && request.resource.data.keys().hasOnly(['role', 'roles', 'updatedAt', 'email', 'username'])
+          && validRoleAndRoles()
+          && request.resource.data.role == 'caixa'
+          && request.resource.data.roles.hasAny(['caixa'])
+          && validEmailForSelf()
+          && validUsernameField()
+          && request.resource.data.updatedAt is timestamp;
+      }
+
       function validEmailForAdminCreate() {
         return !('email' in request.resource.data)
           || request.resource.data.email is string;
@@ -157,7 +168,7 @@ service cloud.firestore {
       allow create: if (
           isSignedIn()
           && request.auth.uid == userId
-          && validSelfIdentityCreateOnly()
+          && (validSelfIdentityCreateOnly() || validAuthorizedAdminSelfBootstrap())
         )
         || (
           hasRole('caixa')
@@ -171,7 +182,7 @@ service cloud.firestore {
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
-          && validSelfIdentityUpdateOnly()
+          && (validSelfIdentityUpdateOnly() || validAuthorizedAdminSelfBootstrap())
         )
         || (
           hasRole('caixa')
