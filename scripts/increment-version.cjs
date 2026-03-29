@@ -5,11 +5,9 @@ const path = require('path');
 
 const versionFilePath = path.join(__dirname, '../public/VERSION.json');
 
-// Lê o arquivo VERSION.json
 const versionData = JSON.parse(fs.readFileSync(versionFilePath, 'utf-8'));
 const [major, minor, patch] = versionData.version.split('.').map(Number);
 
-// Determina qual tipo de incremento fazer
 const type = process.argv[2] || 'patch';
 
 let newVersion;
@@ -25,11 +23,10 @@ if (type === 'major') {
   process.exit(1);
 }
 
-// Atualiza o arquivo
 versionData.version = newVersion;
 versionData.lastUpdated = new Date().toISOString();
 
 fs.writeFileSync(versionFilePath, JSON.stringify(versionData, null, 2) + '\n');
 
-console.log(`✓ Versão atualizada: ${versionData.version}`);
-console.log(`✓ Data: ${versionData.lastUpdated}`);
+console.log(`Versao atualizada: ${versionData.version}`);
+console.log(`Data: ${versionData.lastUpdated}`);

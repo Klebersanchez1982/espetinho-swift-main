@@ -26,7 +26,7 @@ jobs:
           node-version: 22
 
       - name: Increment patch version
-        run: node scripts/increment-version.js patch
+        run: node scripts/increment-version.cjs patch
 
       - name: Commit version bump
         run: |
