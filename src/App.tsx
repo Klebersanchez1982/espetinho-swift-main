@@ -42,6 +42,9 @@ const FirebaseConfigErrorPage = () => (
 const CaixaArea = () => {
   const tab = useRestaurantStore((s) => s.caixaTab);
   const setTab = useRestaurantStore((s) => s.setCaixaTab);
+  const selectTab = (nextTab: 'caixa' | 'estoque' | 'usuarios') => {
+    setTab(nextTab);
+  };
 
   return (
     <div>
@@ -49,7 +52,8 @@ const CaixaArea = () => {
         <Button
           variant={tab === 'caixa' ? 'default' : 'secondary'}
           size="lg"
-          onClick={() => setTab('caixa')}
+          onPointerDown={() => selectTab('caixa')}
+          onClick={() => selectTab('caixa')}
           className="gap-2"
         >
           <Receipt className="h-4 w-4" /> Caixa
@@ -57,7 +61,8 @@ const CaixaArea = () => {
         <Button
           variant={tab === 'estoque' ? 'default' : 'secondary'}
           size="lg"
-          onClick={() => setTab('estoque')}
+          onPointerDown={() => selectTab('estoque')}
+          onClick={() => selectTab('estoque')}
           className="gap-2"
         >
           <Package className="h-4 w-4" /> Estoque
@@ -65,7 +70,8 @@ const CaixaArea = () => {
         <Button
           variant={tab === 'usuarios' ? 'default' : 'secondary'}
           size="lg"
-          onClick={() => setTab('usuarios')}
+          onPointerDown={() => selectTab('usuarios')}
+          onClick={() => selectTab('usuarios')}
           className="gap-2"
         >
           <ShieldCheck className="h-4 w-4" /> Usuarios
