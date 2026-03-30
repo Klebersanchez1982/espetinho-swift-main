@@ -101,7 +101,7 @@ service cloud.firestore {
           && request.resource.data.roles is list
           && request.resource.data.roles.size() > 0
           && request.resource.data.roles.size() <= 3
-          && request.resource.data.roles.all(r, r in ['garcom', 'assador', 'caixa'])
+          && request.resource.data.roles.hasOnly(['garcom', 'assador', 'caixa'])
           && request.resource.data.roles.hasAny([request.resource.data.role]);
       }
 
