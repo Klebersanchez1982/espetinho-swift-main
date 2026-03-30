@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Ban, ShieldCheck, ShieldOff, Trash2, UserCog } from 'lucide-react';
+import { Ban, Pencil, ShieldCheck, ShieldOff, Trash2, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   createManagedUserAsAdmin,
   deleteUserProfileAsAdmin,
   setUserDisabledAsAdmin,
   subscribeUsersForAdmin,
+  updateUserProfileAsAdmin,
   updateUserRoleAsAdmin,
   type UserProfile,
 } from '@/lib/firestore-user-role';
@@ -32,6 +33,9 @@ const AdminUsersPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newRoles, setNewRoles] = useState<UserRole[]>(['garcom']);
   const [userFilter, setUserFilter] = useState<UserFilter>('todos');
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editRoles, setEditRoles] = useState<UserRole[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -151,6 +155,52 @@ const AdminUsersPage = () => {
       setError('Falha ao alterar status de bloqueio do usuario.');
     } finally {
       setBlockingUserId(null);
+    }
+  };
+
+  const openEdit = (user: UserProfile) => {
+    setEditingUserId(user.id);
+    setEditUsername(user.username ?? '');
+    setEditRoles(user.roles.length > 0 ? user.roles : user.role ? [user.role] : ['garcom']);
+    setError('');
+  };
+
+  const cancelEdit = () => {
+    setEditingUserId(null);
+    setEditUsername('');
+    setEditRoles([]);
+  };
+
+  const toggleEditRole = (role: UserRole) => {
+    setEditRoles((prev) => {
+      if (prev.includes(role)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((r) => r !== role);
+      }
+
+      return [...prev, role];
+    });
+  };
+
+  const saveEdit = async (user: UserProfile) => {
+    if (!editUsername.trim()) {
+      setError('Informe um username valido para salvar.');
+      return;
+    }
+
+    setUpdatingUserId(user.id);
+    setError('');
+    try {
+      await updateUserProfileAsAdmin(user.id, {
+        username: editUsername,
+        roles: editRoles,
+        currentRole: user.role,
+      });
+      cancelEdit();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao salvar edicao do usuario.');
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -278,6 +328,15 @@ const AdminUsersPage = () => {
 
                 <Button
                   size="sm"
+                  variant="outline"
+                  disabled={updatingUserId === user.id || deletingUserId === user.id || blockingUserId === user.id}
+                  onClick={() => openEdit(user)}
+                >
+                  <Pencil className="h-4 w-4" /> Editar
+                </Button>
+
+                <Button
+                  size="sm"
                   variant={user.disabled ? 'secondary' : 'warning'}
                   disabled={blockingUserId === user.id || isProtectedUser(user)}
                   onClick={() => toggleBlocked(user)}
@@ -296,6 +355,40 @@ const AdminUsersPage = () => {
                   {deletingUserId === user.id ? 'Excluindo...' : 'Excluir'}
                 </Button>
               </div>
+
+              {editingUserId === user.id && (
+                <div className="mt-4 rounded-md border border-border bg-muted/40 p-3">
+                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Edicao de usuario</p>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    placeholder="username"
+                    className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {roles.map((role) => (
+                      <Button
+                        key={`edit-${user.id}-${role}`}
+                        size="sm"
+                        variant={editRoles.includes(role) ? 'default' : 'secondary'}
+                        onClick={() => toggleEditRole(role)}
+                        disabled={updatingUserId === user.id}
+                      >
+                        {labels[role]}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button size="sm" onClick={() => saveEdit(user)} disabled={updatingUserId === user.id}>
+                      {updatingUserId === user.id ? 'Salvando...' : 'Salvar'}
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={cancelEdit} disabled={updatingUserId === user.id}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

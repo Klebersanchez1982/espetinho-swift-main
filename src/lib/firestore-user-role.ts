@@ -201,6 +201,38 @@ export const updateUserRoleAsAdmin = async (uid: string, roles: UserRole[], curr
   );
 };
 
+export const updateUserProfileAsAdmin = async (
+  uid: string,
+  payload: { username?: string | null; roles: UserRole[]; currentRole?: UserRole | null }
+) => {
+  const userRef = doc(db, usersCollection, uid);
+  const normalizedRoles = payload.roles.filter((r): r is UserRole => r === 'garcom' || r === 'assador' || r === 'caixa');
+
+  if (normalizedRoles.length === 0) {
+    throw new Error('Selecione ao menos um modulo para o usuario.');
+  }
+
+  const nextRole =
+    (payload.currentRole && normalizedRoles.includes(payload.currentRole) ? payload.currentRole : normalizedRoles[0]) ?? null;
+
+  const nextPayload: {
+    role: UserRole | null;
+    roles: UserRole[];
+    updatedAt: Date;
+    username?: string;
+  } = {
+    role: nextRole,
+    roles: normalizedRoles,
+    updatedAt: new Date(),
+  };
+
+  if (payload.username && payload.username.trim()) {
+    nextPayload.username = normalizeUsername(payload.username);
+  }
+
+  await setDoc(userRef, nextPayload, { merge: true });
+};
+
 export const createManagedUserAsAdmin = async (
   username: string,
   password: string,
