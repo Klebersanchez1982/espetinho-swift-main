@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Ban, Pencil, ShieldCheck, ShieldOff, Trash2, UserCog } from 'lucide-react';
+import { Ban, KeyRound, Pencil, ShieldCheck, ShieldOff, Trash2, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   createManagedUserAsAdmin,
   deleteUserProfileAsAdmin,
+  resetUserPasswordAsAdmin,
   setUserDisabledAsAdmin,
   subscribeUsersForAdmin,
   updateUserProfileAsAdmin,
@@ -20,6 +21,8 @@ const labels: Record<UserRole, string> = {
   caixa: 'Caixa',
 };
 
+const FIREBASE_AUTH_USERS_URL = 'https://console.firebase.google.com/project/espetinho-rios/authentication/users';
+
 type UserFilter = 'todos' | 'ativos' | 'bloqueados';
 
 const AdminUsersPage = () => {
@@ -28,6 +31,7 @@ const AdminUsersPage = () => {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [blockingUserId, setBlockingUserId] = useState<string | null>(null);
+  const [passwordResetUserId, setPasswordResetUserId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -204,6 +208,31 @@ const AdminUsersPage = () => {
     }
   };
 
+  const resetPassword = async (user: UserProfile) => {
+    const newPassword = window.prompt(`Nova senha para ${user.username ?? user.email ?? 'usuario'}:`);
+    if (!newPassword) {
+      return;
+    }
+
+    if (newPassword.trim().length < 6) {
+      setError('Senha deve ter ao menos 6 caracteres.');
+      return;
+    }
+
+    setPasswordResetUserId(user.id);
+    setError('');
+    try {
+      await resetUserPasswordAsAdmin(user.id, newPassword.trim());
+    } catch (e) {
+      window.open(FIREBASE_AUTH_USERS_URL, '_blank', 'noopener,noreferrer');
+      setError(
+        `Falha ao redefinir senha pelo painel. Abra o Firebase Auth para redefinir a senha de ${user.email ?? user.username ?? user.id}.`
+      );
+    } finally {
+      setPasswordResetUserId(null);
+    }
+  };
+
   const filteredUsers = users.filter((user) => {
     if (userFilter === 'ativos') return !user.disabled;
     if (userFilter === 'bloqueados') return user.disabled;
@@ -333,6 +362,15 @@ const AdminUsersPage = () => {
                   onClick={() => openEdit(user)}
                 >
                   <Pencil className="h-4 w-4" /> Editar
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={deletingUserId === user.id || passwordResetUserId === user.id}
+                  onClick={() => resetPassword(user)}
+                >
+                  <KeyRound className="h-4 w-4" /> Editar senha
                 </Button>
 
                 <Button

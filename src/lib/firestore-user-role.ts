@@ -1,8 +1,9 @@
 import { deleteApp, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, deleteUser, getAuth, signOut } from 'firebase/auth';
 import { collection, deleteDoc, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { firebaseApp } from '@/lib/firebase';
-import { db } from '@/lib/firebase';
+import { db, functions } from '@/lib/firebase';
 import { UserRole } from '@/types/restaurant';
 import { normalizeUsername, usernameToEmail } from '@/lib/auth';
 import { isAuthorizedAdmin } from '@/lib/authorized-admins';
@@ -320,4 +321,13 @@ export const setUserDisabledAsAdmin = async (uid: string, disabled: boolean) => 
     },
     { merge: true }
   );
+};
+
+export const resetUserPasswordAsAdmin = async (uid: string, newPassword: string) => {
+  const callable = httpsCallable<{ uid: string; newPassword: string }, { success: boolean }>(
+    functions,
+    'resetUserPasswordAsAdmin'
+  );
+
+  await callable({ uid, newPassword });
 };

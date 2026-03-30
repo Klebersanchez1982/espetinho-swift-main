@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 const sanitize = (value: string | undefined) => value?.trim() || '';
 
@@ -60,6 +61,7 @@ const firebaseConfig = {
 export const firebaseApp = initializeApp(firebaseConfig);
 export const db = getFirestore(firebaseApp);
 export const auth = getAuth(firebaseApp);
+export const functions = getFunctions(firebaseApp, 'us-central1');
 
 export let analytics: ReturnType<typeof getAnalytics> | null = null;
 
