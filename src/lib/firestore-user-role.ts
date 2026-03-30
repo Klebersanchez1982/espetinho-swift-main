@@ -1,11 +1,22 @@
+import { deleteApp, initializeApp } from 'firebase/app';
+import { createUserWithEmailAndPassword, deleteUser, getAuth, signOut } from 'firebase/auth';
 import { collection, deleteDoc, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { firebaseApp } from '@/lib/firebase';
 import { db } from '@/lib/firebase';
 import { UserRole } from '@/types/restaurant';
-import { createAuthUserWithUsername, normalizeUsername } from '@/lib/auth';
+import { normalizeUsername, usernameToEmail } from '@/lib/auth';
 import { isAuthorizedAdmin } from '@/lib/authorized-admins';
 
 const usersCollection = 'users';
 const usersRef = collection(db, usersCollection);
+
+const getErrorCode = (error: unknown): string => {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    return String((error as { code?: unknown }).code ?? '');
+  }
+
+  return '';
+};
 
 export interface UserProfile {
   id: string;
@@ -200,23 +211,66 @@ export const createManagedUserAsAdmin = async (
     throw new Error('Selecione ao menos um modulo para o novo usuario.');
   }
 
-  const created = await createAuthUserWithUsername(username, password);
-  const userRef = doc(db, usersCollection, created.uid);
+  const normalizedUsername = normalizeUsername(username);
+  if (!/^[a-z0-9._-]{3,40}$/.test(normalizedUsername)) {
+    throw new Error('Usuario invalido. Use 3-40 caracteres: letras, numeros, ponto, underline ou hifen.');
+  }
 
-  await setDoc(
-    userRef,
-    {
-      email: created.email,
-      username: created.username,
-      role: normalizedRoles[0],
-      roles: normalizedRoles,
-      disabled: false,
-      updatedAt: new Date(),
-    },
-    { merge: true }
-  );
+  if ((password || '').trim().length < 6) {
+    throw new Error('Senha deve ter ao menos 6 caracteres.');
+  }
 
-  return created;
+  const email = usernameToEmail(normalizedUsername);
+  const secondaryAppName = `provision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const secondaryApp = initializeApp(firebaseApp.options, secondaryAppName);
+  const secondaryAuth = getAuth(secondaryApp);
+
+  try {
+    const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    const createdUid = credential.user.uid;
+
+    try {
+      await setDoc(
+        doc(db, usersCollection, createdUid),
+        {
+          email,
+          username: normalizedUsername,
+          role: normalizedRoles[0],
+          roles: normalizedRoles,
+          disabled: false,
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+    } catch (firestoreError) {
+      // Rollback: remove usuario recém-criado do Auth para evitar cadastro parcial.
+      if (secondaryAuth.currentUser) {
+        await deleteUser(secondaryAuth.currentUser).catch(() => undefined);
+      }
+
+      const firestoreCode = getErrorCode(firestoreError);
+      if (firestoreCode === 'permission-denied') {
+        throw new Error('Permissao negada para gravar usuario no Firestore. Verifique perfil caixa/admin e regras de users.');
+      }
+
+      throw new Error('Falha ao gravar usuario no Firestore. Cadastro revertido no Authentication.');
+    }
+
+    return { uid: createdUid, email, username: normalizedUsername };
+  } catch (error) {
+    const code = getErrorCode(error);
+    if (code === 'auth/email-already-in-use') {
+      throw new Error('Usuario ja existe. Escolha outro nome de usuario.');
+    }
+    if (code === 'auth/weak-password') {
+      throw new Error('Senha fraca. Use ao menos 6 caracteres.');
+    }
+
+    throw error;
+  } finally {
+    await signOut(secondaryAuth).catch(() => undefined);
+    await deleteApp(secondaryApp).catch(() => undefined);
+  }
 };
 
 export const deleteUserProfileAsAdmin = async (uid: string) => {
